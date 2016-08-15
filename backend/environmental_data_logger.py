@@ -49,7 +49,6 @@ SIGNUMS_TO_NAMES = dict((getattr(signal, n), n) \
     for n in dir(signal) if n.startswith('SIG') and '_' not in n)
 SIGNAMES_TO_NUMS = dict((v, k) for k, v in SIGNUMS_TO_NAMES.items())
 
-#API_ROOT = "https://api.spark.io/v1/events/"
 API_ROOT = "https://api.particle.io/v1/devices/events/"
 
 #            ("2016-05-16T01:32:09.712000-07:00  76.46  47.30 1240   0x01D900F7D1 0x2104D8FD")

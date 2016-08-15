@@ -202,7 +202,7 @@ void loop() {
     delay(500);
 
 	// Return whatever data we got
-    snprintf(global_printbuf, printbufSize, "%08X %s %s %s",
+    snprintf(global_printbuf, printbufSize, "%08X CO2: %s MS5637: %s RHT03: %s",
     		 seqNum, outbuf_co2, outbuf_baro, outbuf_rht);
     Particle.publish(DataSource, global_printbuf, 60, PRIVATE);
 
