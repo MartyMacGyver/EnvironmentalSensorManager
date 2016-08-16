@@ -18,54 +18,20 @@
     limitations under the License.
 */
 //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-/*
 
-int incomingByte = 0; // for incoming serial data
+#include "particulates-pms7003.h"
 
-const int MAX_FRAME_LEN = 64;
-char frameBuf[MAX_FRAME_LEN];
-int detectOff = 0;
-int frameLen = MAX_FRAME_LEN;
-bool inFrame = false;
-char printbuf[256];
-
-const bool DEBUG = false;
-
-
-uint16_t calcChecksum = 0;
-
-struct PMS7003_framestruct {
-    uint8_t  frameHeader[2];
-    uint16_t frameLen = MAX_FRAME_LEN;
-    uint16_t concPM1_0_CF1;
-    uint16_t concPM2_5_CF1;
-    uint16_t concPM10_0_CF1;
-    uint16_t concPM1_0_amb;
-    uint16_t concPM2_5_amb;
-    uint16_t concPM10_0_amb;
-    uint16_t rawGt0_3um;
-    uint16_t rawGt0_5um;
-    uint16_t rawGt1_0um;
-    uint16_t rawGt2_5um;
-    uint16_t rawGt5_0um;
-    uint16_t rawGt10_0um;
-    uint8_t  version;
-    uint8_t  errorCode;
-    uint16_t checksum;
-} thisFrame;
-
-
-void setup() {
-    Serial.begin(57600);
-    delay(1000);
-    Serial.println("-- Initializing...");
+PMsensorPMS7003::PMsensorPMS7003()
+{
 }
 
 
-bool pms7003_read() {
+bool PMsensorPMS7003::readData() {
     //  Particle.publish("PMS7003", printbuf, 60, PRIVATE);
     // send data only when you receive data:
-    Serial.println("-- Reading PMS7003");
+    if (DEBUG) {
+        Serial.println("-- Reading PMS7003");
+    }
     Serial1.begin(9600);
     bool packetReceived = false;
     while (!packetReceived) {
@@ -104,11 +70,11 @@ bool pms7003_read() {
                     detectOff++;
                 }
                 else {
-                    Serial.print("-- Frame syncing... ");
-                    Serial.print(incomingByte, HEX);
                     if (DEBUG) {
+                        Serial.print("-- Frame syncing... ");
+                        Serial.print(incomingByte, HEX);
+                        Serial.println();
                     }
-                    Serial.println();
                 }
             }
             else {
@@ -188,7 +154,9 @@ bool pms7003_read() {
                         thisFrame.version, thisFrame.errorCode);
                     sprintf(printbuf, "%scsum=%04x %s xsum=%04x", printbuf,
                         thisFrame.checksum, (calcChecksum == thisFrame.checksum ? "==" : "!="), calcChecksum);
-                    Serial.println(printbuf);
+                    if (DEBUG) {
+                        Serial.println(printbuf);
+                    }
                     Particle.publish("Data1", printbuf, 60, PRIVATE);
                     packetReceived = true;
                     detectOff = 0;
@@ -202,8 +170,16 @@ bool pms7003_read() {
     return (calcChecksum == thisFrame.checksum);
 }
 
+
+/*
+void setup() {
+    Serial.begin(57600);
+    delay(1000);
+    Serial.println("-- Initializing...");
+}
+
 void loop () {
-    if (!pms7003_read()) {
+    if (!readData()) {
         delay(4000);
     }
 }

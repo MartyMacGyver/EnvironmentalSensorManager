@@ -24,5 +24,42 @@
 
 #include "application.h"
 
+class PMsensorPMS7003 {
+    public:
+        struct PMS7003_framestruct {
+            uint8_t  frameHeader[2];
+            uint16_t frameLen = MAX_FRAME_LEN;
+            uint16_t concPM1_0_CF1;
+            uint16_t concPM2_5_CF1;
+            uint16_t concPM10_0_CF1;
+            uint16_t concPM1_0_amb;
+            uint16_t concPM2_5_amb;
+            uint16_t concPM10_0_amb;
+            uint16_t rawGt0_3um;
+            uint16_t rawGt0_5um;
+            uint16_t rawGt1_0um;
+            uint16_t rawGt2_5um;
+            uint16_t rawGt5_0um;
+            uint16_t rawGt10_0um;
+            uint8_t  version;
+            uint8_t  errorCode;
+            uint16_t checksum;
+        };
+        PMsensorPMS7003();
+        bool readData();
+
+    private:
+        PMS7003_framestruct thisFrame;
+        const static bool DEBUG = false;
+        const static int MAX_FRAME_LEN = 64;
+        int incomingByte = 0; // for incoming serial data
+        char frameBuf[MAX_FRAME_LEN];
+        int  frameLen = MAX_FRAME_LEN;
+        int detectOff = 0;
+        bool inFrame = false;
+        uint16_t calcChecksum = 0;
+        char printbuf[256];
+};
+
 
 #endif  // PARTICULATES_PMS7003_H_

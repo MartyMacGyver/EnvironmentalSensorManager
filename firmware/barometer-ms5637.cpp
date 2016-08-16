@@ -34,15 +34,15 @@ int BarometricSensorMS5637::resetDevice()
     int rcw = 0;
     sensorReady = false;
     Wire.beginTransmission(i2c_addr);
-	Wire.write(Dev_Reset);
-	rcw = Wire.endTransmission();
+    Wire.write(Dev_Reset);
+    rcw = Wire.endTransmission();
     if (rcw) {
         return rcw;
     }
     if (!readPROM()) {
         sensorReady = true;
     }
-	return 0;
+    return 0;
 }
 
 int BarometricSensorMS5637::readData(uint8_t cmd, int bytes, uint32_t *val) {
