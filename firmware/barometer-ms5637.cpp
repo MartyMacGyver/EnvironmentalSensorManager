@@ -140,7 +140,6 @@ int BarometricSensorMS5637::readPressureAndTemperature(int OSR) {
     rawTemperature = sensD2;
 
     int64_t sensDT = sensD2 - promV[PROM_C5] * (static_cast<int64_t>(1)<<8);
-
     int64_t tempC  = 2000 + sensDT * promV[PROM_C6] / (static_cast<int64_t>(1)<<23);
 
     int64_t corrT2    = 0;
@@ -149,8 +148,8 @@ int BarometricSensorMS5637::readPressureAndTemperature(int OSR) {
     
     if (tempC < 2000) {
         corrT2    = 3 * sensDT * sensDT / (static_cast<int64_t>(1)<<33);
-        corrOFF2  = 61 * (tempC - 2000) * (tempC - 2000) /  (static_cast<int64_t>(1)<<4);
-        corrSENS2 = 29 * (tempC - 2000) * (tempC - 2000) /  (static_cast<int64_t>(1)<<4);
+        corrOFF2  = 61 * (tempC - 2000) * (tempC - 2000) / (static_cast<int64_t>(1)<<4);
+        corrSENS2 = 29 * (tempC - 2000) * (tempC - 2000) / (static_cast<int64_t>(1)<<4);
         if (tempC < -1500) {
             corrOFF2  += 17 * (tempC + 1500) * (tempC + 1500);
             corrSENS2 +=  9 * (tempC + 1500) * (tempC + 1500);

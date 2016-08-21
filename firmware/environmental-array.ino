@@ -116,7 +116,7 @@ bool readCO2Sensor(char outbuf[], int address) {
         rc = false;
     }
 
-    snprintf(outbuf, 64, "%4d %02X%02X%02X%02X",
+    snprintf(outbuf, 64, "%d %02X%02X%02X%02X",
              co2ppm,
              buffer[0], buffer[1], buffer[2], buffer[3]);
 
@@ -154,6 +154,7 @@ bool readBaroSensor(char outbuf[]) {
             delay(500);
         }
     }
+    // Is self-heating may be a problem at higher OSR values?
     baroSensor.readPressureAndTemperature(baroSensor.OSR8192);
     snprintf(outbuf, 64, "%.2f %.2f %08X %08X",
              baroSensor.pressureMbar, baroSensor.temperatureC,
