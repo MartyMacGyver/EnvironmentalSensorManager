@@ -21,6 +21,7 @@
 #include "humidity-temperature-rht03.h"
 #include "barometer-ms5637.h"
 #include "particulates-pms7003.h"
+#include "humidity-temperature-sht31d.h"
 
 const int printbufSize = 256;
 char global_printbuf[printbufSize];
