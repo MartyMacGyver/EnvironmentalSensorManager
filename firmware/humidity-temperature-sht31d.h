@@ -25,13 +25,25 @@
 #include "application.h"
 
 class HumidityTempSensorSHT31D {
-        HumidityTempSensorSHT31D();
+    public:
+        HumidityTempSensorSHT31D(int i2c_addr);
         char * snprintfData(char *, int);
         bool readData();
         bool checksumErr = true;
+        double temperatureC;
+        double rhPercentage;
 
     private:
+        uint8_t calcCRC1wire(uint8_t crc, uint8_t data);
         const static bool DEBUG = false;
+        int i2c_addr = 0x44;
+        uint8_t vals[6];
+        uint16_t tmVal;
+        uint8_t  tmCRC;
+        uint8_t  tmCRCcalc;
+        uint16_t rhVal;
+        uint8_t  rhCRC;
+        uint8_t  rhCRCcalc;
 };
 
 

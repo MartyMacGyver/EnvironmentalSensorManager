@@ -42,10 +42,17 @@ const char DataSource [] = "EnvSensorArray_1";
 RHT03HumidityTemperatureSensor rhtSensor(rhtSensorPin);
 BarometricSensorMS5637 baroSensor(baroSensorAddr);
 ParticulatesSensorPMS7003 pmSensor;
+HumidityTempSensorSHT31D rht2Sensor(0x44);
 
 uint32_t currTimeS = 0;
 int globalErrorCount = 0;
 bool initializing = true;
+
+bool readRht2Sensor(char outbuf[], int len) {
+    rht2Sensor.readData();
+    rht2Sensor.snprintfData(outbuf, len);
+    return rht2Sensor.checksumErr;
+}
 
 bool readPMSensor(char outbuf[], int len) {
     pmSensor.readData();
@@ -188,14 +195,15 @@ const char header_co2[]  = "K30: CO2_ppm CO2_RAW";
 const char header_baro[] = "MS5637: P_mBar T_C P_RAW T_RAW";
 const char header_rht[]  = "RHT03: T_C RH_pct RHT_RAW";
 const char header_pms[]  = "PMS7003: PM_RAW";
+const char header_rht2[] = "RHT03: T_C RH_pct RHT_RAW";
 
 void loop() {
     int prevErrCnt = globalErrorCount;
     currTimeS = Time.now();
 
     if (initializing) {
-        snprintf(global_printbuf, printbufSize, "SEQ_NUM %s %s %s",
-            header_co2, header_baro, header_rht);
+        snprintf(global_printbuf, printbufSize, "SEQ_NUM %s %s %s %s",
+            header_co2, header_baro, header_rht, header_rht2);
         Particle.publish(DataSource, global_printbuf, 60, PRIVATE);
         // 12345678 9999 FFFFFFFF 9999.99 -999.99 FFFFFFFF FFFFFFFF -999.99 44.50 FFFFFFFFFF
         initializing = false;
@@ -222,9 +230,14 @@ void loop() {
     readPMSensor(outbuf_pm, 192);
     delay(500);
 
+    // Gather RHT2 sensor data
+    char outbuf_rht2[64];
+    readRht2Sensor(outbuf_rht2, 64);
+    delay(500);
+
     // Return whatever data we got
-    snprintf(global_printbuf, printbufSize, "%08X OK K30:{%s} MS5637:{%s} RHT03:{%s}",
-             currTimeS, outbuf_co2, outbuf_baro, outbuf_rht);
+    snprintf(global_printbuf, printbufSize, "%08X OK K30:{%s} MS5637:{%s} RHT03:{%s} SHT31:{%s}",
+             currTimeS, outbuf_co2, outbuf_baro, outbuf_rht, outbuf_rht2);
     Particle.publish(DataSource, global_printbuf, 60, PRIVATE);
 
     snprintf(global_printbuf, printbufSize, "%08X OK PMS7003:{%s}",
