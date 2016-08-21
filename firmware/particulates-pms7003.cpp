@@ -21,14 +21,30 @@
 
 #include "particulates-pms7003.h"
 
-PMsensorPMS7003::PMsensorPMS7003()
+ParticulatesSensorPMS7003::ParticulatesSensorPMS7003()
 {
 }
 
+char * ParticulatesSensorPMS7003::snprintfData(char* printbuf, int len) {
+    printbuf[0] = 0;
+    snprintf(printbuf, len, "%s[%02x %02x] (%04x) ", printbuf,
+        currFrame.frameHeader[0], currFrame.frameHeader[1], currFrame.frameLen);
+    snprintf(printbuf, len, "%sCF1=[%04x %04x %04x] ", printbuf,
+        currFrame.concPM1_0_CF1, currFrame.concPM2_5_CF1, currFrame.concPM10_0_CF1);
+    snprintf(printbuf, len, "%samb=[%04x %04x %04x] ", printbuf,
+        currFrame.concPM1_0_amb, currFrame.concPM2_5_amb, currFrame.concPM10_0_amb);
+    snprintf(printbuf, len, "%sraw=[%04x %04x %04x %04x %04x %04x] ", printbuf,
+        currFrame.rawGt0_3um, currFrame.rawGt0_5um, currFrame.rawGt1_0um,
+        currFrame.rawGt2_5um, currFrame.rawGt5_0um, currFrame.rawGt10_0um);
+    snprintf(printbuf, len, "%sver=%02x err=%02x ", printbuf,
+        currFrame.version, currFrame.errorCode);
+    snprintf(printbuf, len, "%scsum=%04x %s xsum=%04x", printbuf,
+        currFrame.checksum, (calcChecksum == currFrame.checksum ? "==" : "!="), calcChecksum);
+    return printbuf;
+}
 
-bool PMsensorPMS7003::readData() {
-    //  Particle.publish("PMS7003", printbuf, 60, PRIVATE);
-    // send data only when you receive data:
+
+bool ParticulatesSensorPMS7003::readData() {
     if (DEBUG) {
         Serial.println("-- Reading PMS7003");
     }
@@ -58,13 +74,13 @@ bool PMsensorPMS7003::readData() {
             if (!inFrame) {
                 if (incomingByte == 0x42 && detectOff == 0) {
                     frameBuf[detectOff] = incomingByte;
-                    thisFrame.frameHeader[0] = incomingByte;
+                    currFrame.frameHeader[0] = incomingByte;
                     calcChecksum = incomingByte; // Checksum init!
                     detectOff++;
                 }
                 else if (incomingByte == 0x4D && detectOff == 1) {
                     frameBuf[detectOff] = incomingByte;
-                    thisFrame.frameHeader[1] = incomingByte;
+                    currFrame.frameHeader[1] = incomingByte;
                     calcChecksum += incomingByte;
                     inFrame = true;
                     detectOff++;
@@ -84,55 +100,55 @@ bool PMsensorPMS7003::readData() {
                 uint16_t val = frameBuf[detectOff-1]+(frameBuf[detectOff-2]<<8);
                 switch (detectOff) {
                     case 4:
-                        thisFrame.frameLen = val;
+                        currFrame.frameLen = val;
                         frameLen = val + detectOff;
                         break;
                     case 6:
-                        thisFrame.concPM1_0_CF1 = val;
+                        currFrame.concPM1_0_CF1 = val;
                         break;
                     case 8:
-                        thisFrame.concPM2_5_CF1 = val;
+                        currFrame.concPM2_5_CF1 = val;
                         break;
                     case 10:
-                        thisFrame.concPM10_0_CF1 = val;
+                        currFrame.concPM10_0_CF1 = val;
                         break;
                     case 12:
-                        thisFrame.concPM1_0_amb = val;
+                        currFrame.concPM1_0_amb = val;
                         break;
                     case 14:
-                        thisFrame.concPM2_5_amb = val;
+                        currFrame.concPM2_5_amb = val;
                         break;
                     case 16:
-                        thisFrame.concPM10_0_amb = val;
+                        currFrame.concPM10_0_amb = val;
                         break;
                     case 18:
-                        thisFrame.rawGt0_3um = val;
+                        currFrame.rawGt0_3um = val;
                         break;
                     case 20:
-                        thisFrame.rawGt0_5um = val;
+                        currFrame.rawGt0_5um = val;
                         break;
                     case 22:
-                        thisFrame.rawGt1_0um = val;
+                        currFrame.rawGt1_0um = val;
                         break;
                     case 24:
-                        thisFrame.rawGt2_5um = val;
+                        currFrame.rawGt2_5um = val;
                         break;
                     case 26:
-                        thisFrame.rawGt5_0um = val;
+                        currFrame.rawGt5_0um = val;
                         break;
                     case 28:
-                        thisFrame.rawGt10_0um = val;
+                        currFrame.rawGt10_0um = val;
                         break;
                     case 29:
                         val = frameBuf[detectOff-1];
-                        thisFrame.version = val;
+                        currFrame.version = val;
                         break;
                     case 30:
                         val = frameBuf[detectOff-1];
-                        thisFrame.errorCode = val;
+                        currFrame.errorCode = val;
                         break;
                     case 32:
-                        thisFrame.checksum = val;
+                        currFrame.checksum = val;
                         calcChecksum -= ((val>>8)+(val&0xFF));
                         break;
                     default:
@@ -140,47 +156,17 @@ bool PMsensorPMS7003::readData() {
                 }
     
                 if (detectOff >= frameLen) {
-                    sprintf(printbuf, "PMS7003 ");
-                    sprintf(printbuf, "%s[%02x %02x] (%04x) ", printbuf,
-                        thisFrame.frameHeader[0], thisFrame.frameHeader[1], thisFrame.frameLen);
-                    sprintf(printbuf, "%sCF1=[%04x %04x %04x] ", printbuf,
-                        thisFrame.concPM1_0_CF1, thisFrame.concPM2_5_CF1, thisFrame.concPM10_0_CF1);
-                    sprintf(printbuf, "%samb=[%04x %04x %04x] ", printbuf,
-                        thisFrame.concPM1_0_amb, thisFrame.concPM2_5_amb, thisFrame.concPM10_0_amb);
-                    sprintf(printbuf, "%sraw=[%04x %04x %04x %04x %04x %04x] ", printbuf,
-                        thisFrame.rawGt0_3um, thisFrame.rawGt0_5um, thisFrame.rawGt1_0um,
-                        thisFrame.rawGt2_5um, thisFrame.rawGt5_0um, thisFrame.rawGt10_0um);
-                    sprintf(printbuf, "%sver=%02x err=%02x ", printbuf,
-                        thisFrame.version, thisFrame.errorCode);
-                    sprintf(printbuf, "%scsum=%04x %s xsum=%04x", printbuf,
-                        thisFrame.checksum, (calcChecksum == thisFrame.checksum ? "==" : "!="), calcChecksum);
                     if (DEBUG) {
-                        Serial.println(printbuf);
+                        Serial.println("-- Frame complete");
                     }
-                    Particle.publish("Data1", printbuf, 60, PRIVATE);
                     packetReceived = true;
                     detectOff = 0;
-                    calcChecksum = 0;
                     inFrame = false;
                 }
             }
         }
     }
     Serial1.end();
-    return (calcChecksum == thisFrame.checksum);
+    checksumErr = !(calcChecksum == currFrame.checksum);
+    return checksumErr;
 }
-
-
-/*
-void setup() {
-    Serial.begin(57600);
-    delay(1000);
-    Serial.println("-- Initializing...");
-}
-
-void loop () {
-    if (!readData()) {
-        delay(4000);
-    }
-}
-*/

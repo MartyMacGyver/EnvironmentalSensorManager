@@ -24,7 +24,7 @@
 
 #include "application.h"
 
-class PMsensorPMS7003 {
+class ParticulatesSensorPMS7003 {
     public:
         struct PMS7003_framestruct {
             uint8_t  frameHeader[2];
@@ -45,11 +45,13 @@ class PMsensorPMS7003 {
             uint8_t  errorCode;
             uint16_t checksum;
         };
-        PMsensorPMS7003();
+        ParticulatesSensorPMS7003();
         bool readData();
+        char * snprintfData(char *, int);
+        bool checksumErr = true;
 
     private:
-        PMS7003_framestruct thisFrame;
+        PMS7003_framestruct currFrame;
         const static bool DEBUG = false;
         const static int MAX_FRAME_LEN = 64;
         int incomingByte = 0; // for incoming serial data
@@ -57,8 +59,7 @@ class PMsensorPMS7003 {
         int  frameLen = MAX_FRAME_LEN;
         int detectOff = 0;
         bool inFrame = false;
-        uint16_t calcChecksum = 0;
-        char printbuf[256];
+        uint16_t calcChecksum;
 };
 
 

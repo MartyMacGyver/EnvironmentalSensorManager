@@ -18,12 +18,9 @@
 */
 //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
-// This #include statement was automatically added by the Particle IDE.
-//#include "rht03-humidity-temperature-sensor/rht03-humidity-temperature-sensor.h"
 #include "humidity-temperature-rht03.h"
-
-// This #include statement was automatically added by the Particle IDE.
 #include "barometer-ms5637.h"
+#include "particulates-pms7003.h"
 
 const int printbufSize = 256;
 char global_printbuf[printbufSize];
@@ -38,17 +35,24 @@ int co2SensorAddr   = 0x69;  // 0x68
 int serial0DataRate = 9600;
 int i2cDataRate     = CLOCK_SPEED_100KHZ; // CLOCK_SPEED_400KHZ
 const int MaxErrCnt = 10;
+const int CycleTimeS = 10;
 const char DataSource [] = "EnvSensorArray_1";
 
 RHT03HumidityTemperatureSensor rhtSensor(rhtSensorPin);
 BarometricSensorMS5637 baroSensor(baroSensorAddr);
+ParticulatesSensorPMS7003 pmSensor;
 
-uint32_t seqNum = 0;
+uint32_t currTimeS = 0;
 int globalErrorCount = 0;
 bool initializing = true;
 
+bool readPMSensor(char outbuf[], int len) {
+    pmSensor.readData();
+    pmSensor.snprintfData(outbuf, len);
+    return pmSensor.checksumErr;
+}
 
-bool readCo2sensor(char outbuf[], int address) {
+bool readCO2Sensor(char outbuf[], int address) {
     int rcw = 0;
     int co2errors = 0;
     unsigned char buffer[4];
@@ -86,7 +90,7 @@ bool readCo2sensor(char outbuf[], int address) {
         rcw = Wire.endTransmission();
     }
     delay(10);
-    
+
     Wire.requestFrom(address, 4);
     
     buffer[0] = 0; buffer[1] = 0; buffer[2] = 0; buffer[3] = 0;
@@ -151,7 +155,7 @@ bool readBaroSensor(char outbuf[]) {
         }
     }
     baroSensor.readPressureAndTemperature(baroSensor.OSR8192);
-    snprintf(outbuf, 64, "%6.2f %6.2f %08X %08X",
+    snprintf(outbuf, 64, "%.2f %.2f %08X %08X",
              baroSensor.pressureMbar, baroSensor.temperatureC,
              baroSensor.rawPressure,  baroSensor.rawTemperature);
     return true;
@@ -163,7 +167,7 @@ bool readRhtSensor(char outbuf[]) {
     double rhtTemperature = rhtSensor.getTemperature();
     double rhtHumidity = rhtSensor.getHumidity();
     uint8_t * rhtRawData = rhtSensor.getRaw();
-    snprintf(outbuf, 64, "%6.2f %5.2f  %02X%02X%02X%02X%02X",
+    snprintf(outbuf, 64, "%.2f %.2f  %02X%02X%02X%02X%02X",
              rhtTemperature, rhtHumidity,
              rhtRawData[0], rhtRawData[1], rhtRawData[2], rhtRawData[3], rhtRawData[4]);
     return true;
@@ -180,12 +184,12 @@ void setup() {
 
 const char header_co2[]  = "K30: CO2_ppm CO2_RAW";
 const char header_baro[] = "MS5637: P_mBar T_C P_RAW T_RAW";
-const char header_rht[]  = "RHT03: T_C RH_pct D_RAW";
-const char header_pms[]  = "PMS7003: (...data...)";
+const char header_rht[]  = "RHT03: T_C RH_pct RHT_RAW";
+const char header_pms[]  = "PMS7003: PM_RAW";
 
 void loop() {
     int prevErrCnt = globalErrorCount;
-    seqNum = Time.now();
+    currTimeS = Time.now();
 
     if (initializing) {
         snprintf(global_printbuf, printbufSize, "SEQ_NUM %s %s %s",
@@ -198,22 +202,31 @@ void loop() {
 
     // Gather CO2 sensor data
     char outbuf_co2[64];
-    readCo2sensor(outbuf_co2, co2SensorAddr);
+    readCO2Sensor(outbuf_co2, co2SensorAddr);
     delay(1000);
 
     // Gather MS5637 sensor data
     char outbuf_baro[64];
     readBaroSensor(outbuf_baro);
-    delay(1000);
+    delay(500);
 
     // Gather RHT sensor data
     char outbuf_rht[64];
     readRhtSensor(outbuf_rht);
     delay(500);
 
+    // Gather PM sensor data
+    char outbuf_pm[192];
+    readPMSensor(outbuf_pm, 192);
+    delay(500);
+
     // Return whatever data we got
-    snprintf(global_printbuf, printbufSize, "%08X CO2: %s MS5637: %s RHT03: %s",
-             seqNum, outbuf_co2, outbuf_baro, outbuf_rht);
+    snprintf(global_printbuf, printbufSize, "%08X OK K30:{%s} MS5637:{%s} RHT03:{%s}",
+             currTimeS, outbuf_co2, outbuf_baro, outbuf_rht);
+    Particle.publish(DataSource, global_printbuf, 60, PRIVATE);
+
+    snprintf(global_printbuf, printbufSize, "%08X OK PMS7003:{%s}",
+             currTimeS, outbuf_pm);
     Particle.publish(DataSource, global_printbuf, 60, PRIVATE);
 
     // Global error handling
@@ -226,7 +239,8 @@ void loop() {
         Particle.publish(DataSource, "! Error counter is clear", 60, PRIVATE);
     }
 
-    seqNum++;
-    delay(500); // Aim for 5 seconds in the each normal loop
+    while (Time.now() - currTimeS < CycleTimeS) {
+        delay(500);
+    }
 }
 
