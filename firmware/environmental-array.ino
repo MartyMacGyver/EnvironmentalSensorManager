@@ -182,12 +182,68 @@ bool readRhtSensor(char outbuf[]) {
     return true;
 }
 
+bool disable9DOFSensor(char outbuf[]) {
+    snprintf(outbuf, 128, "BNO-055:");
+    int BNO_i2c = 0x29;
+    int rcw = 0;
+    const int MAX_VALS = 8;
+    uint8_t vals[MAX_VALS];
+    uint8_t aval = 0x42;
+
+    Wire.beginTransmission(BNO_i2c);
+    rcw = Wire.write(0x00);
+    Wire.endTransmission();
+    rcw = Wire.requestFrom(BNO_i2c, MAX_VALS);
+    if (rcw == MAX_VALS) {
+        for (int i = 0; i < MAX_VALS; i++) {
+            vals[i] = Wire.read();
+        }
+    }
+    snprintf(outbuf, 128, "%s [", outbuf);
+    for (int i = 0; i < MAX_VALS-1; i++) {
+        snprintf(outbuf, 128, "%s%02X ", outbuf, vals[i]);
+    }
+    snprintf(outbuf, 128, "%s%02X]", outbuf, vals[MAX_VALS-1]);
+
+    Wire.beginTransmission(BNO_i2c);
+    rcw = Wire.write(0x3D);
+    Wire.endTransmission();
+    rcw = Wire.requestFrom(BNO_i2c, 1);
+    aval = Wire.read() & 0x0f;
+    snprintf(outbuf, 128, "%s OPR=%02X", outbuf, aval);
+
+    Wire.beginTransmission(BNO_i2c);
+    rcw = Wire.write(0x3E);
+    Wire.endTransmission();
+    rcw = Wire.requestFrom(BNO_i2c, 1);
+    aval = Wire.read() & 0x03;
+    snprintf(outbuf, 128, "%s PWR_prev=%02X", outbuf, aval);
+
+    Wire.beginTransmission(BNO_i2c);
+    rcw = Wire.write(0x3E);
+    rcw = Wire.write(0x02);
+    Wire.endTransmission();
+
+    Wire.beginTransmission(BNO_i2c);
+    rcw = Wire.write(0x3E);
+    Wire.endTransmission();
+    rcw = Wire.requestFrom(BNO_i2c, 1);
+    aval = Wire.read() & 0x03;
+    snprintf(outbuf, 128, "%s PWR_curr=%02X", outbuf, aval);
+
+    return true;
+}
+
 
 void setup() {
     Serial.begin(serial0DataRate);
     Wire.setSpeed(i2cDataRate);
     Wire.begin();
     delay(500);
+    char outbuf_tester[128];
+    disable9DOFSensor(outbuf_tester);
+    Particle.publish(DataSource, outbuf_tester, 60, PRIVATE);
+    delay(2000);
 }
 
 
@@ -196,6 +252,7 @@ const char header_baro[] = "MS5637: P_mBar T_C P_RAW T_RAW";
 const char header_rht[]  = "RHT03: T_C RH_pct RHT_RAW";
 const char header_pms[]  = "PMS7003: PM_RAW";
 const char header_rht2[] = "RHT03: T_C RH_pct RHT_RAW";
+
 
 void loop() {
     int prevErrCnt = globalErrorCount;
