@@ -23,8 +23,8 @@
 #include "particulates-pms7003.h"
 #include "humidity-temperature-sht31d.h"
 
-const int printbufSize = 256;
-char global_printbuf[printbufSize];
+const int g_printbuf_sz = 256;
+char g_printbuf[g_printbuf_sz];
 
 //const char degsym[] = "\xB0";  // Serial
 //const char degsym[] = "&deg;"; // HTML
@@ -48,19 +48,19 @@ uint32_t currTimeS = 0;
 int globalErrorCount = 0;
 bool initializing = true;
 
-bool readRht2Sensor(char outbuf[], int len) {
+bool readRht2Sensor(char outbuf[], int outbuf_sz) {
     rht2Sensor.readData();
-    rht2Sensor.snprintfData(outbuf, len);
+    rht2Sensor.snprintfData(outbuf, outbuf_sz);
     return rht2Sensor.checksumErr;
 }
 
-bool readPMSensor(char outbuf[], int len) {
+bool readPMSensor(char outbuf[], int outbuf_sz) {
     pmSensor.readData();
-    pmSensor.snprintfData(outbuf, len);
+    pmSensor.snprintfData(outbuf, outbuf_sz);
     return pmSensor.checksumErr;
 }
 
-bool readCO2Sensor(char outbuf[], int address) {
+bool readCO2Sensor(char outbuf[], int outbuf_sz, int address) {
     int rcw = 0;
     int co2errors = 0;
     unsigned char buffer[4];
@@ -71,8 +71,8 @@ bool readCO2Sensor(char outbuf[], int address) {
     rcw = Wire.endTransmission();
     rcw = 0;
     if (rcw) {
-        snprintf(global_printbuf, printbufSize, "! CO2 COMMS error1 - RC = %d", rcw);
-        Particle.publish(DataSource, global_printbuf, 60, PRIVATE);
+        snprintf(g_printbuf, g_printbuf_sz, "! CO2 COMMS error1 - RC = %d", rcw);
+        Particle.publish(DataSource, g_printbuf, 60, PRIVATE);
         co2errors++;
         Wire.end();
         delay(500);
@@ -90,8 +90,8 @@ bool readCO2Sensor(char outbuf[], int address) {
     Wire.write(0x2A);
     rcw = Wire.endTransmission();
     if (rcw) {
-        snprintf(global_printbuf, printbufSize, "! CO2 COMMS error2 - RC = %d", rcw);
-        Particle.publish(DataSource, global_printbuf, 60, PRIVATE);
+        snprintf(g_printbuf, g_printbuf_sz, "! CO2 COMMS error2 - RC = %d", rcw);
+        Particle.publish(DataSource, g_printbuf, 60, PRIVATE);
         co2errors++;
         rcw = Wire.endTransmission();
         rcw = Wire.endTransmission();
@@ -124,7 +124,7 @@ bool readCO2Sensor(char outbuf[], int address) {
         rc = false;
     }
 
-    snprintf(outbuf, 64, "%d %02X%02X%02X%02X",
+    snprintf(outbuf, outbuf_sz, "%d %02X%02X%02X%02X",
              co2ppm,
              buffer[0], buffer[1], buffer[2], buffer[3]);
 
@@ -140,50 +140,51 @@ bool readCO2Sensor(char outbuf[], int address) {
 }
 
 
-bool readBaroSensor(char outbuf[]) {
+bool readBaroSensor(char outbuf[], int outbuf_sz) {
     // Gather MS5637 sensor data
     if (!baroSensor.sensorReady) {
         baroSensor.resetDevice();
         delay(500);
         if (baroSensor.sensorReady) {
             uint16_t *vals = baroSensor.promV;
-            snprintf(global_printbuf, printbufSize,
+            snprintf(g_printbuf, g_printbuf_sz,
                 "! MS5637 READY - PROM=[%04X,%04X,%04X,%04X,%04X,%04X,%04X]",
                 vals[0], vals[1], vals[2], vals[3], vals[4], vals[5], vals[6]);
-            Particle.publish(DataSource, global_printbuf, 60, PRIVATE);
+            Particle.publish(DataSource, g_printbuf, 60, PRIVATE);
             delay(500);
         }
         else {
             uint16_t *vals = baroSensor.promV;
-            snprintf(global_printbuf, printbufSize,
+            snprintf(g_printbuf, g_printbuf_sz,
                 "! MS5637 FAIL! - PROM=[%04X,%04X,%04X,%04X,%04X,%04X,%04X]",
                 vals[0], vals[1], vals[2], vals[3], vals[4], vals[5], vals[6]);
-            Particle.publish(DataSource, global_printbuf, 60, PRIVATE);
+            Particle.publish(DataSource, g_printbuf, 60, PRIVATE);
             delay(500);
         }
     }
     // Is self-heating may be a problem at higher OSR values?
     baroSensor.readPressureAndTemperature(baroSensor.OSR8192);
-    snprintf(outbuf, 64, "%.2f %.2f %08X %08X",
+    snprintf(outbuf, outbuf_sz, "%.2f %.2f %08X %08X",
              baroSensor.pressureMbar, baroSensor.temperatureC,
              baroSensor.rawPressure,  baroSensor.rawTemperature);
     return true;
 }
 
 
-bool readRhtSensor(char outbuf[]) {
+bool readRhtSensor(char outbuf[], int outbuf_sz) {
     rhtSensor.update();
     double rhtTemperature = rhtSensor.getTemperature();
     double rhtHumidity = rhtSensor.getHumidity();
     uint8_t * rhtRawData = rhtSensor.getRaw();
-    snprintf(outbuf, 64, "%.2f %.2f  %02X%02X%02X%02X%02X",
+    snprintf(outbuf, outbuf_sz, "%.2f %.2f  %02X%02X%02X%02X%02X",
              rhtTemperature, rhtHumidity,
              rhtRawData[0], rhtRawData[1], rhtRawData[2], rhtRawData[3], rhtRawData[4]);
     return true;
 }
 
-bool disable9DOFSensor(char outbuf[]) {
-    snprintf(outbuf, 128, "BNO-055:");
+
+bool disable9DOFSensor(char outbuf[], int outbuf_sz) {
+    snprintf(outbuf, outbuf_sz, "BNO-055:");
     int BNO_i2c = 0x29;
     int rcw = 0;
     const int MAX_VALS = 8;
@@ -199,25 +200,25 @@ bool disable9DOFSensor(char outbuf[]) {
             vals[i] = Wire.read();
         }
     }
-    snprintf(outbuf, 128, "%s [", outbuf);
+    snprintf(outbuf, outbuf_sz, "%s [", outbuf);
     for (int i = 0; i < MAX_VALS-1; i++) {
-        snprintf(outbuf, 128, "%s%02X ", outbuf, vals[i]);
+        snprintf(outbuf, outbuf_sz, "%s%02X ", outbuf, vals[i]);
     }
-    snprintf(outbuf, 128, "%s%02X]", outbuf, vals[MAX_VALS-1]);
+    snprintf(outbuf, outbuf_sz, "%s%02X]", outbuf, vals[MAX_VALS-1]);
 
     Wire.beginTransmission(BNO_i2c);
     rcw = Wire.write(0x3D);
     Wire.endTransmission();
     rcw = Wire.requestFrom(BNO_i2c, 1);
     aval = Wire.read() & 0x0f;
-    snprintf(outbuf, 128, "%s OPR=%02X", outbuf, aval);
+    snprintf(outbuf, outbuf_sz, "%s OPR=%02X", outbuf, aval);
 
     Wire.beginTransmission(BNO_i2c);
     rcw = Wire.write(0x3E);
     Wire.endTransmission();
     rcw = Wire.requestFrom(BNO_i2c, 1);
     aval = Wire.read() & 0x03;
-    snprintf(outbuf, 128, "%s PWR_prev=%02X", outbuf, aval);
+    snprintf(outbuf, outbuf_sz, "%s PWR_prev=%02X", outbuf, aval);
 
     Wire.beginTransmission(BNO_i2c);
     rcw = Wire.write(0x3E);
@@ -229,7 +230,7 @@ bool disable9DOFSensor(char outbuf[]) {
     Wire.endTransmission();
     rcw = Wire.requestFrom(BNO_i2c, 1);
     aval = Wire.read() & 0x03;
-    snprintf(outbuf, 128, "%s PWR_curr=%02X", outbuf, aval);
+    snprintf(outbuf, outbuf_sz, "%s PWR_curr=%02X", outbuf, aval);
 
     return true;
 }
@@ -240,8 +241,9 @@ void setup() {
     Wire.setSpeed(i2cDataRate);
     Wire.begin();
     delay(500);
-    char outbuf_tester[128];
-    disable9DOFSensor(outbuf_tester);
+    const int outbuf_9dof_sz = 128;
+    char outbuf_tester[outbuf_9dof_sz];
+    disable9DOFSensor(outbuf_tester, outbuf_9dof_sz);
     Particle.publish(DataSource, outbuf_tester, 60, PRIVATE);
     delay(2000);
 }
@@ -259,47 +261,52 @@ void loop() {
     currTimeS = Time.now();
 
     if (initializing) {
-        snprintf(global_printbuf, printbufSize, "SEQ_NUM %s %s %s %s",
+        snprintf(g_printbuf, g_printbuf_sz, "SEQ_NUM %s %s %s %s",
             header_co2, header_baro, header_rht, header_rht2);
-        Particle.publish(DataSource, global_printbuf, 60, PRIVATE);
+        Particle.publish(DataSource, g_printbuf, 60, PRIVATE);
         // 12345678 9999 FFFFFFFF 9999.99 -999.99 FFFFFFFF FFFFFFFF -999.99 44.50 FFFFFFFFFF
         initializing = false;
         delay(2000);
     }
 
     // Gather CO2 sensor data
-    char outbuf_co2[64];
-    readCO2Sensor(outbuf_co2, co2SensorAddr);
+    const int outbuf_co2_sz = 64;
+    char outbuf_co2[outbuf_co2_sz];
+    readCO2Sensor(outbuf_co2, outbuf_co2_sz, co2SensorAddr);
     delay(1000);
 
     // Gather MS5637 sensor data
-    char outbuf_baro[64];
-    readBaroSensor(outbuf_baro);
+    const int outbuf_baro_sz = 64;
+    char outbuf_baro[outbuf_baro_sz];
+    readBaroSensor(outbuf_baro, outbuf_baro_sz);
     delay(500);
 
     // Gather RHT sensor data
-    char outbuf_rht[64];
-    readRhtSensor(outbuf_rht);
+    const int outbuf_rht_sz = 64;
+    char outbuf_rht[outbuf_rht_sz];
+    readRhtSensor(outbuf_rht, outbuf_rht_sz);
     delay(500);
 
     // Gather PM sensor data
-    char outbuf_pm[192];
-    readPMSensor(outbuf_pm, 192);
+    const int outbuf_pm_sz = 192;
+    char outbuf_pm[outbuf_pm_sz];
+    readPMSensor(outbuf_pm, outbuf_pm_sz);
     delay(500);
 
     // Gather RHT2 sensor data
-    char outbuf_rht2[64];
-    readRht2Sensor(outbuf_rht2, 64);
+    const int outbuf_rht2_sz = 64;
+    char outbuf_rht2[outbuf_rht2_sz];
+    readRht2Sensor(outbuf_rht2, outbuf_rht2_sz);
     delay(500);
 
     // Return whatever data we got
-    snprintf(global_printbuf, printbufSize, "%08X OK K30:{%s} MS5637:{%s} RHT03:{%s} SHT31:{%s}",
+    snprintf(g_printbuf, g_printbuf_sz, "%08X OK K30:{%s} MS5637:{%s} RHT03:{%s} SHT31:{%s}",
              currTimeS, outbuf_co2, outbuf_baro, outbuf_rht, outbuf_rht2);
-    Particle.publish(DataSource, global_printbuf, 60, PRIVATE);
+    Particle.publish(DataSource, g_printbuf, 60, PRIVATE);
 
-    snprintf(global_printbuf, printbufSize, "%08X OK PMS7003:{%s}",
+    snprintf(g_printbuf, g_printbuf_sz, "%08X OK PMS7003:{%s}",
              currTimeS, outbuf_pm);
-    Particle.publish(DataSource, global_printbuf, 60, PRIVATE);
+    Particle.publish(DataSource, g_printbuf, 60, PRIVATE);
 
     // Global error handling
     if (globalErrorCount >= MaxErrCnt) {
