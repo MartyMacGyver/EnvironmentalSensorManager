@@ -241,6 +241,8 @@ void setup() {
     Wire.setSpeed(i2cDataRate);
     Wire.begin();
     delay(500);
+    Serial.printf("%08X OK - initializing", Time.now());
+    Serial.println();
     const int outbuf_9dof_sz = 128;
     char outbuf_tester[outbuf_9dof_sz];
     disable9DOFSensor(outbuf_tester, outbuf_9dof_sz);
@@ -311,6 +313,8 @@ void loop() {
     // Global error handling
     if (globalErrorCount >= MaxErrCnt) {
         Particle.publish(DataSource, "! Errors maxed: rebooting...", 60, PRIVATE);
+        Serial.printf("%08X ERR - restarting", Time.now());
+        Serial.println();
         delay(1000);
         System.reset();
     }
@@ -321,5 +325,7 @@ void loop() {
     while (Time.now() - currTimeS < CycleTimeS) {
         delay(500);
     }
+    Serial.printf("%08X OK - looping", Time.now());
+    Serial.println();
 }
 
