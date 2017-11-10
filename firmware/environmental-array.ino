@@ -35,7 +35,7 @@ int baroSensorAddr  = 0x76;
 int co2SensorAddr   = 0x69;  // 0x68
 int serial0DataRate = 9600;
 int i2cDataRate     = CLOCK_SPEED_100KHZ; // CLOCK_SPEED_400KHZ
-const int MaxErrCnt = 10;
+const int MaxErrCnt = 8;
 const int CycleTimeS = 10;
 const char DataSource [] = "EnvSensorArray_1";
 
@@ -159,6 +159,7 @@ bool readBaroSensor(char outbuf[], int outbuf_sz) {
                 "! MS5637 FAIL! - PROM=[%04X,%04X,%04X,%04X,%04X,%04X,%04X]",
                 vals[0], vals[1], vals[2], vals[3], vals[4], vals[5], vals[6]);
             Particle.publish(DataSource, g_printbuf, 60, PRIVATE);
+            globalErrorCount++;
             delay(500);
         }
     }
